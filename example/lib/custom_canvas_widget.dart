@@ -77,7 +77,7 @@ class _CustomQRPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     // Dibuja un rectángulo para ver los límites del canvas
-    final paint = Paint()..color = Colors.white.withOpacity(0.3);
+    final paint = Paint()..color = Colors.white.withValues(alpha: 0.3);
     canvas.drawRect(Offset.zero & size, paint);
 
     // Dibujar los textos

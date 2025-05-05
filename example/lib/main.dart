@@ -1,11 +1,12 @@
 import 'dart:async';
 import 'dart:ui' as ui;
 import 'dart:ui';
-import 'package:flutter/rendering.dart';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:niimbot_label_printer/niimbot_label_printer.dart';
 import 'package:niimbot_label_printer_example/custom_canvas_widget.dart';
+import 'package:permission_handler/permission_handler.dart';
 
 void main() {
   runApp(const Apps());
@@ -65,6 +66,23 @@ class _MyAppState extends State<MyApp> {
     super.dispose();
   }
 
+  Future<bool> checkPermissions(BuildContext context) async {
+    bool bluetoothScan = await Permission.bluetoothScan.request().isGranted;
+    bool bluetooth = await Permission.bluetooth.request().isGranted;
+    bool bluetoothConnect =
+        await Permission.bluetoothConnect.request().isGranted;
+    bool location = await Permission.location.request().isGranted;
+
+    if (bluetoothScan && bluetooth && bluetoothConnect && location) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Semua izin telah diperiksa')));
+      }
+      return true;
+    }
+    return false;
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -75,32 +93,42 @@ class _MyAppState extends State<MyApp> {
             onSelected: (String value) async {
               switch (value) {
                 case "permission_is_granted":
-                  final bool result = await _niimbotLabelPrinterPlugin.requestPermissionGrant();
+                  final bool result = await checkPermissions(context);
                   setState(() {
-                    _msj = result ? 'Permission is granted' : 'Permission is not granted';
+                    _msj = result
+                        ? 'Permission is granted'
+                        : 'Permission is not granted';
                   });
                   break;
                 case "bluetooth_is_enabled":
-                  final bool result = await _niimbotLabelPrinterPlugin.bluetoothIsEnabled();
+                  final bool result =
+                      await _niimbotLabelPrinterPlugin.bluetoothIsEnabled();
                   setState(() {
-                    _msj = result ? 'Bluetooth is enabled' : 'Bluetooth is not enabled';
+                    _msj = result
+                        ? 'Bluetooth is enabled'
+                        : 'Bluetooth is not enabled';
                   });
                   break;
                 case "is_connected":
-                  final bool result = await _niimbotLabelPrinterPlugin.isConnected();
+                  final bool result =
+                      await _niimbotLabelPrinterPlugin.isConnected();
                   setState(() {
-                    _msj = result ? 'Bluetooth is connected' : 'Bluetooth is not connected';
+                    _msj = result
+                        ? 'Bluetooth is connected'
+                        : 'Bluetooth is not connected';
                   });
                   break;
                 case "get_paired_devices":
-                  final List<BluetoothDevice> result = await _niimbotLabelPrinterPlugin.getPairedDevices();
+                  final List<BluetoothDevice> result =
+                      await _niimbotLabelPrinterPlugin.getPairedDevices();
                   _devices = result;
                   setState(() {
                     _msj = "Devices ${result.length}";
                   });
                   break;
                 case "disconnect":
-                  final bool result = await _niimbotLabelPrinterPlugin.disconnect();
+                  final bool result =
+                      await _niimbotLabelPrinterPlugin.disconnect();
                   setState(() {
                     _msj = result ? 'Disconnected' : 'Not disconnected';
                   });
@@ -162,9 +190,11 @@ class _MyAppState extends State<MyApp> {
                           decoration: BoxDecoration(
                             border: Border.all(color: Colors.black, width: 1),
                           ),
-                          child: RawImage(image: _image!, width: _width, height: _height),
+                          child: RawImage(
+                              image: _image!, width: _width, height: _height),
                         ),
-                        Text("image. width: ${_image!.width}, height: ${_image!.height}"),
+                        Text(
+                            "image. width: ${_image!.width}, height: ${_image!.height}"),
                       ],
                     )
                   : const SizedBox(),
@@ -214,7 +244,8 @@ class _MyAppState extends State<MyApp> {
                         ),
                         ElevatedButton(
                           onPressed: () async {
-                            final bool isConnected = await _niimbotLabelPrinterPlugin.isConnected();
+                            final bool isConnected =
+                                await _niimbotLabelPrinterPlugin.isConnected();
                             if (!isConnected) {
                               setState(() {
                                 _msj = 'Not connected';
@@ -225,7 +256,8 @@ class _MyAppState extends State<MyApp> {
                             ui.Image image = _image!;
 
                             ByteData? byteData = await image.toByteData();
-                            List<int> bytesImage = byteData!.buffer.asUint8List().toList();
+                            List<int> bytesImage =
+                                byteData!.buffer.asUint8List().toList();
                             Map<String, dynamic> datosImagen = {
                               "bytes": bytesImage,
                               "width": image.width,
@@ -235,14 +267,20 @@ class _MyAppState extends State<MyApp> {
                               "density": density,
                               "labelType": labelType,
                             };
-                            PrintData printData = PrintData.fromMap(datosImagen);
-                            final bool result = await _niimbotLabelPrinterPlugin.send(printData);
+                            PrintData printData =
+                                PrintData.fromMap(datosImagen);
+                            final bool result = await _niimbotLabelPrinterPlugin
+                                .send(printData);
                             setState(() {
                               _msj = result ? 'Printed' : 'Not printed';
                             });
                           },
-                          style: ElevatedButton.styleFrom(backgroundColor: Colors.green, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
-                          child: const Text('Print image', style: TextStyle(color: Colors.white)),
+                          style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.green,
+                              shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(10))),
+                          child: const Text('Print image',
+                              style: TextStyle(color: Colors.white)),
                         ),
                       ],
                     ),
@@ -269,7 +307,8 @@ class _MyAppState extends State<MyApp> {
                           connecting = true;
                           macConnection = device.address;
                         });
-                        bool result = await _niimbotLabelPrinterPlugin.connect(device);
+                        bool result =
+                            await _niimbotLabelPrinterPlugin.connect(device);
                         setState(() {
                           _msj = result ? 'Connected' : 'Not connected';
                           macConnection = device.address;
@@ -298,7 +337,8 @@ class _MyAppState extends State<MyApp> {
         return BackdropFilter(
           filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
           child: AlertDialog(
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
             content: StatefulBuilder(
               builder: (BuildContext context, StateSetter setState) {
                 return SizedBox(
@@ -311,7 +351,10 @@ class _MyAppState extends State<MyApp> {
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            const Text("Donate in PayPal", textAlign: TextAlign.center, style: TextStyle(fontSize: 20, color: Colors.black)),
+                            const Text("Donate in PayPal",
+                                textAlign: TextAlign.center,
+                                style: TextStyle(
+                                    fontSize: 20, color: Colors.black)),
                             IconButton(
                               onPressed: () {
                                 Navigator.pop(context);
@@ -340,7 +383,8 @@ class _MyAppState extends State<MyApp> {
                             Expanded(
                               child: TextField(
                                 controller: txttext,
-                                decoration: const InputDecoration(labelText: 'Text'),
+                                decoration:
+                                    const InputDecoration(labelText: 'Text'),
                               ),
                             ),
                             TextButton(
@@ -350,7 +394,9 @@ class _MyAppState extends State<MyApp> {
                                     TextInfo(
                                       text: txttext.text,
                                       fontSize: textSize,
-                                      position: isCenter ? TextPosition.center : TextPosition.left,
+                                      position: isCenter
+                                          ? TextPosition.center
+                                          : TextPosition.left,
                                       isBold: isBold,
                                     ),
                                   );
@@ -375,12 +421,12 @@ class _MyAppState extends State<MyApp> {
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            SizedBox(
-                              width: 140,
+                            Expanded(
                               child: CheckboxListTile(
                                 value: isBold,
                                 dense: true,
-                                controlAffinity: ListTileControlAffinity.leading,
+                                controlAffinity:
+                                    ListTileControlAffinity.leading,
                                 onChanged: (value) {
                                   setState(() {
                                     isBold = value!;
@@ -390,12 +436,12 @@ class _MyAppState extends State<MyApp> {
                                 title: const Text('Bold'),
                               ),
                             ),
-                            SizedBox(
-                              width: 140,
+                            Expanded(
                               child: CheckboxListTile(
                                 value: isCenter,
                                 dense: true,
-                                controlAffinity: ListTileControlAffinity.leading,
+                                controlAffinity:
+                                    ListTileControlAffinity.leading,
                                 onChanged: (value) {
                                   setState(() {
                                     isCenter = value!;
@@ -416,22 +462,27 @@ class _MyAppState extends State<MyApp> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              const Text("Size label to print", style: TextStyle(fontSize: 8)),
-                              const Text("The image can be created with a specific size and rotated before printing.", style: TextStyle(fontSize: 8)),
+                              const Text("Size label to print",
+                                  style: TextStyle(fontSize: 8)),
+                              const Text(
+                                  "The image can be created with a specific size and rotated before printing.",
+                                  style: TextStyle(fontSize: 8)),
                               Row(
                                 children: [
                                   SizedBox(
                                     width: 100,
                                     child: TextField(
                                       controller: txtwidth,
-                                      decoration: const InputDecoration(labelText: 'Width mm'),
+                                      decoration: const InputDecoration(
+                                          labelText: 'Width mm'),
                                     ),
                                   ),
                                   SizedBox(
                                     width: 100,
                                     child: TextField(
                                       controller: txtheight,
-                                      decoration: const InputDecoration(labelText: 'Height mm'),
+                                      decoration: const InputDecoration(
+                                          labelText: 'Height mm'),
                                     ),
                                   ),
                                 ],
@@ -440,7 +491,8 @@ class _MyAppState extends State<MyApp> {
                                 width: 200,
                                 child: TextField(
                                   controller: txtpixelformm,
-                                  decoration: const InputDecoration(labelText: 'Pixels per mm'),
+                                  decoration: const InputDecoration(
+                                      labelText: 'Pixels per mm'),
                                 ),
                               ),
                               ElevatedButton(
@@ -448,14 +500,24 @@ class _MyAppState extends State<MyApp> {
                                   updateSize();
                                   _image = await CustomQRWidget.getImage(
                                     textList: texts,
-                                    qrData: "www.example.com",
+                                    qrData: texts
+                                        .map(
+                                          (e) => e.text,
+                                        )
+                                        .toString()
+                                        .toString(),
                                     width: _width,
                                     height: _height,
                                   );
                                   if (context.mounted) Navigator.pop(context);
                                 },
-                                style: ElevatedButton.styleFrom(backgroundColor: Colors.green, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
-                                child: const Text('Create image', style: TextStyle(color: Colors.white)),
+                                style: ElevatedButton.styleFrom(
+                                    backgroundColor: Colors.green,
+                                    shape: RoundedRectangleBorder(
+                                        borderRadius:
+                                            BorderRadius.circular(10))),
+                                child: const Text('Create image',
+                                    style: TextStyle(color: Colors.white)),
                               ),
                             ],
                           ),
@@ -485,7 +547,8 @@ class _MyAppState extends State<MyApp> {
     }
   }
 
-  Future<ui.Image> resizeImage(ui.Image image, double targetWidth, double targetHeight) async {
+  Future<ui.Image> resizeImage(
+      ui.Image image, double targetWidth, double targetHeight) async {
     final recorder = ui.PictureRecorder();
     final canvas = Canvas(recorder);
 
