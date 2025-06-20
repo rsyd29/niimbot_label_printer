@@ -188,9 +188,31 @@ class NiimbotLabelPrinterPlugin : FlutterPlugin, MethodCallHandler {
         } else if (call.method == "disconnect") {
             disconncet()
             result.success(true)
+        } else if (call.method == "getPrintStatus") {
+            getPrintStatus(result)
         } else {
             result.notImplemented()
         }
+    }
+
+    private fun getPrintStatus(result: Result) {
+        bluetoothSocket?.let { socket ->
+            niimbotPrinter = NiimbotPrinter(mContext, socket)
+            GlobalScope.launch(Dispatchers.Main) {
+                try {
+                    val printStatus = niimbotPrinter!!.getPrintStatus()
+                    result.success(
+                        mapOf(
+                            "page" to printStatus["page"],
+                            "progress1" to printStatus["progress1"],
+                            "progress2" to printStatus["progress2"]
+                        )
+                    )
+                } catch (e: Exception) {
+                    result.error("PRINT_STATUS_ERROR", e.message, null)
+                }
+            }
+        } ?: result.success(null)
     }
 
     private fun dispositivosVinculados(): List<String> {
@@ -266,5 +288,3 @@ class NiimbotLabelPrinterPlugin : FlutterPlugin, MethodCallHandler {
         channel.setMethodCallHandler(null)
     }
 }
-
-

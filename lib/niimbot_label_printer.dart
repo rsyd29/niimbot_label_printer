@@ -1,23 +1,28 @@
-import 'dart:ui' as ui;
 import 'dart:math' as math;
+import 'dart:ui' as ui;
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 class NiimbotLabelPrinter {
-  final MethodChannel methodChannel = const MethodChannel('niimbot_label_printer');
+  final MethodChannel methodChannel =
+      const MethodChannel('niimbot_label_printer');
 
   Future<String?> getPlatformVersion() async {
-    final version = await methodChannel.invokeMethod<String>('getPlatformVersion');
+    final version =
+        await methodChannel.invokeMethod<String>('getPlatformVersion');
     return version;
   }
 
   Future<bool> requestPermissionGrant() async {
-    final bool? result = await methodChannel.invokeMethod<bool>('ispermissionbluetoothgranted');
+    final bool? result =
+        await methodChannel.invokeMethod<bool>('ispermissionbluetoothgranted');
     return result ?? false;
   }
 
   Future<bool> bluetoothIsEnabled() async {
-    final bool? result = await methodChannel.invokeMethod<bool>('isBluetoothEnabled');
+    final bool? result =
+        await methodChannel.invokeMethod<bool>('isBluetoothEnabled');
     return result ?? false;
   }
 
@@ -26,9 +31,22 @@ class NiimbotLabelPrinter {
     return result ?? false;
   }
 
+  /// Gets the current print status
+  /// Returns a map containing:
+  /// - page: Current page being printed
+  /// - progress1: First progress indicator (0-100)
+  /// - progress2: Second progress indicator (0-100)
+  /// Returns null if printer is not connected
+  Future<Map<String, int>?> getPrintStatus() async {
+    final result =
+        await methodChannel.invokeMapMethod<String, int>('getPrintStatus');
+    return result;
+  }
+
   /// Returns bluetooths paired devices
   Future<List<BluetoothDevice>> getPairedDevices() async {
-    final List<Object?>? result = await methodChannel.invokeMethod<List<Object?>?>('getPairedDevices');
+    final List<Object?>? result =
+        await methodChannel.invokeMethod<List<Object?>?>('getPairedDevices');
     List<BluetoothDevice> devices = [];
     for (Object? o in result!) {
       devices.add(BluetoothDevice.fromString(o.toString()));
@@ -37,7 +55,8 @@ class NiimbotLabelPrinter {
   }
 
   Future<bool> connect(BluetoothDevice device) async {
-    final bool? result = await methodChannel.invokeMethod<bool>('connect', device.address);
+    final bool? result =
+        await methodChannel.invokeMethod<bool>('connect', device.address);
     return result ?? false;
   }
 
@@ -47,7 +66,8 @@ class NiimbotLabelPrinter {
   }
 
   Future<bool> send(PrintData data) async {
-    final bool? result = await methodChannel.invokeMethod<bool>('send', data.toMap());
+    final bool? result =
+        await methodChannel.invokeMethod<bool>('send', data.toMap());
     //final bool? result = await methodChannel.invokeMethod<bool>('send', bytes);
     return result ?? false;
   }
@@ -75,7 +95,8 @@ class NiimbotLabelPrinter {
     canvas.drawImage(image, Offset(-halfWidth, -halfHeight), Paint());
 
     final picture = recorder.endRecording();
-    final rotatedImage = await picture.toImage(size.width.toInt(), size.height.toInt());
+    final rotatedImage =
+        await picture.toImage(size.width.toInt(), size.height.toInt());
 
     return rotatedImage;
   }
