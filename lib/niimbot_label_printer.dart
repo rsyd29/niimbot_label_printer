@@ -43,6 +43,45 @@ class NiimbotLabelPrinter {
     return result;
   }
 
+  /// Gets RFID information from the printer
+  /// Returns a map containing:
+  /// - uuid: RFID UUID
+  /// - barcode: Barcode information
+  /// - serial: Serial number
+  /// - used_len: Used length
+  /// - total_len: Total length
+  /// - type: RFID type
+  /// Returns null if printer is not connected or RFID is not available
+  Future<Map<String, dynamic>?> getRfid() async {
+    final result =
+        await methodChannel.invokeMapMethod<String, dynamic>('getRfid');
+    return result;
+  }
+
+  /// Gets printer information based on the provided key
+  /// Key values:
+  /// - 11: Device serial number
+  /// - 9: Software version
+  /// - 12: Hardware version
+  /// Returns the requested information or null if printer is not connected
+  Future<dynamic> getInfo(int key) async {
+    final result = await methodChannel.invokeMethod<dynamic>('getInfo', key);
+    return result;
+  }
+
+  /// Gets printer heartbeat information
+  /// Returns a map containing:
+  /// - closing_state: Cover state
+  /// - power_level: Battery level
+  /// /// - paper_state: Paper status
+  /// - rfid_read_state: RFID reader status
+  /// Returns null if printer is not connected
+  Future<Map<String, dynamic>?> getHeartbeat() async {
+    final result =
+        await methodChannel.invokeMapMethod<String, dynamic>('heartbeat');
+    return result;
+  }
+
   /// Returns bluetooths paired devices
   Future<List<BluetoothDevice>> getPairedDevices() async {
     final List<Object?>? result =

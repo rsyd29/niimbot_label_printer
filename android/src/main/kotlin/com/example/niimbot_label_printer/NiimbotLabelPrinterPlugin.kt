@@ -190,6 +190,47 @@ class NiimbotLabelPrinterPlugin : FlutterPlugin, MethodCallHandler {
             result.success(true)
         } else if (call.method == "getPrintStatus") {
             getPrintStatus(result)
+        } else if (call.method == "getRfid") {
+            bluetoothSocket?.let { socket ->
+                niimbotPrinter = NiimbotPrinter(mContext, socket)
+                GlobalScope.launch(Dispatchers.Main) {
+                    try {
+                        val rfidData = niimbotPrinter.getRfid()
+                        result.success(rfidData)
+                    } catch (e: Exception) {
+                        result.error("RFID_ERROR", e.message, null)
+                    }
+                }
+            } ?: result.success(null)
+        } else if (call.method == "getInfo") {
+            val key = (call.arguments as? Int)?.toByte()
+            if (key != null) {
+                bluetoothSocket?.let { socket ->
+                    niimbotPrinter = NiimbotPrinter(mContext, socket)
+                    GlobalScope.launch(Dispatchers.Main) {
+                        try {
+                            val info = niimbotPrinter.getInfo(key)
+                            result.success(info)
+                        } catch (e: Exception) {
+                            result.error("INFO_ERROR", e.message, null)
+                        }
+                    }
+                } ?: result.success(null)
+            } else {
+                result.error("INVALID_ARGUMENT", "Key must be an integer", null)
+            }
+        } else if (call.method == "heartbeat") {
+            bluetoothSocket?.let { socket ->
+                niimbotPrinter = NiimbotPrinter(mContext, socket)
+                GlobalScope.launch(Dispatchers.Main) {
+                    try {
+                        val heartbeatData = niimbotPrinter.heartbeat()
+                        result.success(heartbeatData)
+                    } catch (e: Exception) {
+                        result.error("HEARTBEAT_ERROR", e.message, null)
+                    }
+                }
+            } ?: result.success(null)
         } else {
             result.notImplemented()
         }
@@ -200,7 +241,7 @@ class NiimbotLabelPrinterPlugin : FlutterPlugin, MethodCallHandler {
             niimbotPrinter = NiimbotPrinter(mContext, socket)
             GlobalScope.launch(Dispatchers.Main) {
                 try {
-                    val printStatus = niimbotPrinter!!.getPrintStatus()
+                    val printStatus = niimbotPrinter.getPrintStatus()
                     result.success(
                         mapOf(
                             "page" to printStatus["page"],
