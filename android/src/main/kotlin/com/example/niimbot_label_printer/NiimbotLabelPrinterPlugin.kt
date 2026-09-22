@@ -23,6 +23,7 @@ import io.flutter.plugin.common.MethodChannel
 import io.flutter.plugin.common.MethodChannel.MethodCallHandler
 import io.flutter.plugin.common.MethodChannel.Result
 import java.io.IOException
+import java.io.InputStream
 import java.io.OutputStream
 import java.nio.ByteBuffer
 import java.util.UUID
@@ -45,6 +46,8 @@ class NiimbotLabelPrinterPlugin : FlutterPlugin, MethodCallHandler {
     private var permissionGranted: Boolean = false
 
     private var bluetoothSocket: BluetoothSocket? = null
+    private var outputStream: OutputStream? = null
+    private var inputStream: InputStream? = null
     private lateinit var mac: String
     private lateinit var niimbotPrinter: NiimbotPrinter
 
@@ -128,13 +131,57 @@ class NiimbotLabelPrinterPlugin : FlutterPlugin, MethodCallHandler {
                         bluetoothSocket = device?.createRfcommSocketToServiceRecord(
                             UUID.fromString("00001101-0000-1000-8000-00805F9B34FB")
                         )
+                        // Establish the connection
                         bluetoothSocket?.connect()
-                        result.success(true)
+                        
+                        // Verify socket is connected and store streams
+                        if (bluetoothSocket?.isConnected == true) {
+                            try {
+                                // FIX: Get and STORE the streams as member variables
+                                outputStream = bluetoothSocket?.outputStream
+                                inputStream = bluetoothSocket?.inputStream
+                                
+                                if (outputStream != null && inputStream != null) {
+                                    Log.d(TAG, "Streams obtained and stored successfully")
+                                    
+                                    // FIX: Initialize printer by sending a complete dummy print job
+                                    try {
+                                        Log.d(TAG, "Initializing printer with dummy print job...")
+                                        sendDummyPrint(outputStream!!, inputStream!!)
+                                        Log.d(TAG, "Printer initialization complete")
+                                    } catch (e: Exception) {
+                                        Log.w(TAG, "Printer initialization warning: ${e.message}")
+                                    }
+                                    
+                                    result.success(true)
+                                } else {
+                                    Log.e(TAG, "Failed to initialize streams")
+                                    outputStream = null
+                                    inputStream = null
+                                    bluetoothSocket?.close()
+                                    bluetoothSocket = null
+                                    result.success(false)
+                                }
+                            } catch (e: IOException) {
+                                Log.e(TAG, "Stream access error: ${e.message}")
+                                outputStream = null
+                                inputStream = null
+                                bluetoothSocket?.close()
+                                bluetoothSocket = null
+                                result.success(false)
+                            }
+                        } else {
+                            Log.e(TAG, "Socket not connected")
+                            result.success(false)
+                        }
                     } else {
                         result.success(false)
                     }
                 } catch (e: IOException) {
+                    Log.e(TAG, "Connection error: ${e.message}")
                     e.printStackTrace()
+                    bluetoothSocket?.close()
+                    bluetoothSocket = null
                     result.success(false)
                 }
             }
@@ -168,15 +215,16 @@ class NiimbotLabelPrinterPlugin : FlutterPlugin, MethodCallHandler {
                 // Copiar los bytes al Bitmap
                 bitmap.copyPixelsFromBuffer(ByteBuffer.wrap(bytes))
 
-                bluetoothSocket?.let { socket ->
-                    niimbotPrinter = NiimbotPrinter(mContext, socket)
-                    // Aquí puedes usar el bitmap para imprimir
-                    // Por ejemplo:
+                if (outputStream != null && inputStream != null) {
+                    niimbotPrinter = NiimbotPrinter(mContext, outputStream!!, inputStream!!)
                     GlobalScope.launch {
                         niimbotPrinter.printBitmap(bitmap, density = density, labelType = labelType, rotate = rotate, invertColor = invertColor)
                         result.success(true)
                     }
-                } ?: result.success(false) //println("No hay conexión Bluetooth establecida")
+                } else {
+                    Log.e(TAG, "No hay conexión Bluetooth establecida o streams no disponibles")
+                    result.success(false)
+                }
             } else {
                 println("Datos de imagen inválidos o incompletos")
                 println("bytes: $bytes")
@@ -191,8 +239,8 @@ class NiimbotLabelPrinterPlugin : FlutterPlugin, MethodCallHandler {
         } else if (call.method == "getPrintStatus") {
             getPrintStatus(result)
         } else if (call.method == "getRfid") {
-            bluetoothSocket?.let { socket ->
-                niimbotPrinter = NiimbotPrinter(mContext, socket)
+            if (outputStream != null && inputStream != null) {
+                niimbotPrinter = NiimbotPrinter(mContext, outputStream!!, inputStream!!)
                 GlobalScope.launch(Dispatchers.Main) {
                     try {
                         val rfidData = niimbotPrinter.getRfid()
@@ -201,12 +249,12 @@ class NiimbotLabelPrinterPlugin : FlutterPlugin, MethodCallHandler {
                         result.error("RFID_ERROR", e.message, null)
                     }
                 }
-            } ?: result.success(null)
+            } else { result.success(null) }
         } else if (call.method == "getInfo") {
             val key = (call.arguments as? Int)?.toByte()
             if (key != null) {
-                bluetoothSocket?.let { socket ->
-                    niimbotPrinter = NiimbotPrinter(mContext, socket)
+                if (outputStream != null && inputStream != null) {
+                    niimbotPrinter = NiimbotPrinter(mContext, outputStream!!, inputStream!!)
                     GlobalScope.launch(Dispatchers.Main) {
                         try {
                             val info = niimbotPrinter.getInfo(key)
@@ -215,13 +263,13 @@ class NiimbotLabelPrinterPlugin : FlutterPlugin, MethodCallHandler {
                             result.error("INFO_ERROR", e.message, null)
                         }
                     }
-                } ?: result.success(null)
+                } else { result.success(null) }
             } else {
                 result.error("INVALID_ARGUMENT", "Key must be an integer", null)
             }
         } else if (call.method == "heartbeat") {
-            bluetoothSocket?.let { socket ->
-                niimbotPrinter = NiimbotPrinter(mContext, socket)
+            if (outputStream != null && inputStream != null) {
+                niimbotPrinter = NiimbotPrinter(mContext, outputStream!!, inputStream!!)
                 GlobalScope.launch(Dispatchers.Main) {
                     try {
                         val heartbeatData = niimbotPrinter.heartbeat()
@@ -230,15 +278,15 @@ class NiimbotLabelPrinterPlugin : FlutterPlugin, MethodCallHandler {
                         result.error("HEARTBEAT_ERROR", e.message, null)
                     }
                 }
-            } ?: result.success(null)
+            } else { result.success(null) }
         } else {
             result.notImplemented()
         }
     }
 
     private fun getPrintStatus(result: Result) {
-        bluetoothSocket?.let { socket ->
-            niimbotPrinter = NiimbotPrinter(mContext, socket)
+        if (outputStream != null && inputStream != null) {
+            niimbotPrinter = NiimbotPrinter(mContext, outputStream!!, inputStream!!)
             GlobalScope.launch(Dispatchers.Main) {
                 try {
                     val printStatus = niimbotPrinter.getPrintStatus()
@@ -253,7 +301,7 @@ class NiimbotLabelPrinterPlugin : FlutterPlugin, MethodCallHandler {
                     result.error("PRINT_STATUS_ERROR", e.message, null)
                 }
             }
-        } ?: result.success(null)
+        } else { result.success(null) }
     }
 
     private fun dispositivosVinculados(): List<String> {
@@ -321,8 +369,71 @@ class NiimbotLabelPrinterPlugin : FlutterPlugin, MethodCallHandler {
         }
     }
 
+    private fun createPacket(type: Byte, data: ByteArray): ByteArray {
+        val packetData = ByteBuffer.allocate(data.size + 7)
+            .put(0x55.toByte()).put(0x55.toByte()) // Header
+            .put(type)
+            .put(data.size.toByte())
+            .put(data)
+
+        var checksum = type.toInt() xor data.size
+        data.forEach { checksum = checksum xor it.toInt() }
+
+        packetData.put(checksum.toByte())
+            .put(0xAA.toByte()).put(0xAA.toByte()) // Footer
+
+        return packetData.array()
+    }
+    
+    private fun sendDummyPrint(output: OutputStream, input: InputStream) {
+        // Send a complete minimal print job (1x1 white pixel) to initialize the print pipeline
+        fun sendCmd(cmd: Byte, data: ByteArray) {
+            val packet = createPacket(cmd, data)
+            output.write(packet)
+            output.flush()
+            Thread.sleep(50)
+            if (input.available() > 0) {
+                val buf = ByteArray(1024)
+                input.read(buf)
+            }
+        }
+        
+        sendCmd(0x21, byteArrayOf(3))
+        sendCmd(0x23, byteArrayOf(1))
+        sendCmd(0x01, byteArrayOf(1))
+        sendCmd(0xDC.toByte(), byteArrayOf(1))
+        sendCmd(0x20, byteArrayOf(1))
+        sendCmd(0x03, byteArrayOf(1))
+        
+        val dimData = ByteBuffer.allocate(4).putShort(1).putShort(1).array()
+        sendCmd(0x13, dimData)
+        
+        val qtyData = ByteBuffer.allocate(2).putShort(1).array()
+        sendCmd(0x15, qtyData)
+        
+        val imageHeader = ByteBuffer.allocate(6)
+            .putShort(0)
+            .put(0.toByte()).put(0.toByte()).put(0.toByte())
+            .put(1.toByte())
+            .array()
+        val imageData = imageHeader + byteArrayOf(0)
+        sendCmd(0x85.toByte(), imageData)
+        
+        sendCmd(0xE3.toByte(), byteArrayOf(1))
+        Thread.sleep(100)
+        sendCmd(0xF3.toByte(), byteArrayOf(1))
+        Log.d(TAG, "Dummy print job completed")
+    }
+
     private fun disconncet() {
-        bluetoothSocket?.close()
+        try {
+            try { outputStream?.close() } catch (e: Exception) {}
+            try { inputStream?.close() } catch (e: Exception) {}
+            bluetoothSocket?.close()
+            outputStream = null
+            inputStream = null
+            bluetoothSocket = null
+        } catch (e: Exception) {}
     }
 
     override fun onDetachedFromEngine(binding: FlutterPlugin.FlutterPluginBinding) {
