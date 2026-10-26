@@ -1,3 +1,8 @@
+## 0.0.7
+
+* Migrates to built-in Kotlin (AGP 9); no longer applies the Kotlin Gradle Plugin.
+* Updates minimum supported SDK version to Flutter 3.44/Dart 3.12.
+
 ## 0.0.6
 
 * Fix: Resolved blank labels on first print by sending complete dummy print job at connection
